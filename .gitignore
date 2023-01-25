@@ -30,3 +30,8 @@ override.tf.json
 .env*
 !.env.example
 !.envrc
+
+docs
+.terraform.docs.yml
+k8s/**
+!k8s/.gitkeep
