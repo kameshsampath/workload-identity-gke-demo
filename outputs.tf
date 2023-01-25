@@ -28,3 +28,20 @@ output "kubeconfig_path" {
   description = "Kubeconfig file"
 }
 
+output "translator_service_account" {
+  value       = google_service_account.translator_sa.email
+  description = "The Google Service Account 'translator'"
+}
+
+output "ksa_patch" {
+  value = templatefile("templates/sa.tfpl", {
+    serviceAccountName : "${var.app_ksa}"
+    serviceAccountNamespace : "${var.app_namespace}",
+    googleServiceAccountEmail : "${google_service_account.translator_sa.email}"
+  })
+  description = "The Kubernetes Service Account patch"
+}
+
+
+
+

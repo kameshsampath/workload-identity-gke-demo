@@ -23,10 +23,6 @@ resource "google_container_cluster" "primary" {
   location           = local.google_zone
   min_master_version = data.google_container_engine_versions.supported.latest_master_version
 
-  node_locations = [
-    local.google_zone,
-  ]
-
   # We can't create a cluster with no node pool defined, but we want to only use
   # separately managed node pools. So we create the smallest possible default
   # node pool and immediately delete it.
@@ -72,7 +68,6 @@ resource "google_container_node_pool" "primary_nodes" {
   }
 }
 
-
 resource "local_file" "kubeconfig" {
   content = templatefile("${path.module}/templates/kubeconfig-template.tfpl", {
     cluster_name    = google_container_cluster.primary.name
@@ -83,6 +78,6 @@ resource "local_file" "kubeconfig" {
   })
   filename             = "${path.module}/.kube/config"
   file_permission      = 0600
-  directory_permission = 0600
+  directory_permission = 0700
 }
 

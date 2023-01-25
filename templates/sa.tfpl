@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lingua-greeter
+  namespace: ${serviceAccountNamespace}
+  annotations:
+    iam.gke.io/gcp-service-account: "${googleServiceAccountEmail}"

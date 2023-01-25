@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lingua-greeter
+spec:
+  selector:
+    matchLabels:
+      app: lingua-greeter
+  template:
+    metadata:
+      labels:
+        app: lingua-greeter
+    spec:
+      serviceAccountName: lingua-greeter
+      nodeSelector:
+        iam.gke.io/gke-metadata-server-enabled: "true"
+      containers:
+        - name: lingua-greeter
+          image: ghcr.io/kameshsampath/wi-lingua-greeter@sha256:845fa21d9360771160959ff1143e96d20ac79a512cb7e3176e078c3203731620
+          resources:
+            limits:
+              memory: "64Mi"
+              cpu: "50m"
+          ports:
+            - name: http
+              containerPort: 8080

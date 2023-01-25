@@ -36,3 +36,12 @@ variable "release_channel" {
   default     = "stable"
 }
 
+variable "app_namespace" {
+  description = "the kubernetes namespace where the lingua-greeter demo application will be deployed"
+  default     = "demo-apps"
+}
+
+variable "app_ksa" {
+  description = "the kubernetes service account that will be used to run the lingua-greeter deployment"
+  default     = "lingua-greeter"
+}

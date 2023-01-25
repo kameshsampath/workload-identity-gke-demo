@@ -1,0 +1,21 @@
+formatter: "md table"
+
+header-from: "docs/.header.md"
+footer-from: "docs/.footer.md"
+
+content: |
+  {{ .Header }}
+
+  {{ include "docs/.deployment.md" }}  
+  
+  {{ .Inputs }}
+
+  {{ .Outputs }}
+
+  {{ .Providers }}
+
+  {{ .Requirements }}
+
+  {{ .Resources }}
+
+  {{ .Footer }}
