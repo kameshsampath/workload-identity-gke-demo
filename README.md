@@ -1,4 +1,3 @@
-<!-- BEGIN_TF_DOCS -->
 # Using Workload Identity
 
 A demo to show how to use [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity) to call Google Cloud API. In this demo we will call the [Translate API](https://cloud.google.com/translate) from a GKE application(pod) using Workload Identity.
@@ -16,6 +15,15 @@ A demo to show how to use [Workload Identity](https://cloud.google.com/kubernete
 - [helm](https://helm.sh)(Optional)
 - [kustomize](https://kustomize.io)(Optional)
 - [direnv](https://direnv.net)(Optional)
+
+## Download Sources
+
+Clone the sources,
+
+```shell
+git clone https://github.com/kameshsampath/workload-identiy-gke-demo.git && cd "$(basename "$_" .git)"
+export DEMO_HOME="$PWD"
+```
 
 ## Environment Setup
 
@@ -39,21 +47,44 @@ export TFVARS_FILE=<name>.local.tfvars
 
 >**NOTE**: All `.local.tfvars` file are git ignored by this template.
 
+Check the [Inputs](#inputs) section for all possible variables that are configurable.
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_app_ksa"></a> [app\_ksa](#input\_app\_ksa) | the kubernetes service account that will be used to run the lingua-greeter deployment | `string` | `"lingua-greeter"` | no |
+| <a name="input_app_namespace"></a> [app\_namespace](#input\_app\_namespace) | the kubernetes namespace where the lingua-greeter demo application will be deployed | `string` | `"demo-apps"` | no |
+| <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | the gke cluster name | `string` | `"my-demos"` | no |
+| <a name="input_gke_num_nodes"></a> [gke\_num\_nodes](#input\_gke\_num\_nodes) | number of gke nodes | `number` | `2` | no |
+| <a name="input_kubernetes_version"></a> [kubernetes\_version](#input\_kubernetes\_version) | the kubernetes versions of the GKE clusters | `string` | `"1.24."` | no |
+| <a name="input_machine_type"></a> [machine\_type](#input\_machine\_type) | the google cloud machine types for each cluster node | `string` | `"e2-standard-4"` | no |
+| <a name="input_project_id"></a> [project\_id](#input\_project\_id) | project id | `any` | n/a | yes |
+| <a name="input_region"></a> [region](#input\_region) | the region or zone where the cluster will be created | `string` | `"asia-south1"` | no |
+| <a name="input_release_channel"></a> [release\_channel](#input\_release\_channel) | the GKE release channel to use | `string` | `"stable"` | no |
+
+### Example
+
+An example `my.local.tfvars` that will use a Google Cloud project **my-awesome-project**, create a two node GKE cluster named **wi-demo** in region **asia-south1** with Kubernetes version **1.24.** from **stable** release channel. The machine type of each cluster node will be **e2-standard-4**. The demo will be deployed in Kubernetes namespace **demo-apps**, will use **lingua-greeter** as the Kubernetes Service Account.
+
+```hcl
+app_ksa            = "lingua-greeter"
+app_namespace      = "demo-apps"
+cluster_name       = "wi-demo"
+gke_num_nodes      = 2
+kubernetes_version = "1.24."
+machine_type       = "e2-standard-4"
+project_id         = "my-awesome-project"
+region             = "asia-south1"
+release_channel    = "stable"
+```
+
 ## Application Overview
 
 As part of the demo, let us deploy a Kubernetes application called `lingua-greeter`. The application exposes a REST API `/:lang` , that allows you to translate a text `Hello World!` into the language `:lang` using Google Translate client.
 
 > **NOTE**: The `:lang` is the BCP 47 language code, <https://en.wikipedia.org/wiki/IETF_language_tag>.
 >
-
-### Download Sources
-
-Clone the sources,
-
-```shell
-git clone https://github.com/kameshsampath/workload-identiy-gke-demo.git && cd "$(basename "$_" .git)"
-export DEMO_HOME="$PWD"
-```
 
 ### Create Environment
 
@@ -170,20 +201,6 @@ kubectl apply -n demo-apps -f "$DEMO_HOME/k8s/sa.yaml"
 
 For more information check out [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity).
 
-## Inputs
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_app_ksa"></a> [app\_ksa](#input\_app\_ksa) | the kubernetes service account that will be used to run the lingua-greeter deployment | `string` | `"lingua-greeter"` | no |
-| <a name="input_app_namespace"></a> [app\_namespace](#input\_app\_namespace) | the kubernetes namespace where the lingua-greeter demo application will be deployed | `string` | `"demo-apps"` | no |
-| <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | the gke cluster name | `string` | `"my-demos"` | no |
-| <a name="input_gke_num_nodes"></a> [gke\_num\_nodes](#input\_gke\_num\_nodes) | number of gke nodes | `number` | `2` | no |
-| <a name="input_kubernetes_version"></a> [kubernetes\_version](#input\_kubernetes\_version) | the kubernetes versions of the GKE clusters | `string` | `"1.24."` | no |
-| <a name="input_machine_type"></a> [machine\_type](#input\_machine\_type) | the google cloud machine types for each cluster node | `string` | `"e2-standard-4"` | no |
-| <a name="input_project_id"></a> [project\_id](#input\_project\_id) | project id | `any` | n/a | yes |
-| <a name="input_region"></a> [region](#input\_region) | the region or zone where the cluster will be created | `string` | `"asia-south1"` | no |
-| <a name="input_release_channel"></a> [release\_channel](#input\_release\_channel) | the GKE release channel to use | `string` | `"stable"` | no |
-
 ## Outputs
 
 | Name | Description |
@@ -236,4 +253,3 @@ For more information check out [Workload Identity](https://cloud.google.com/kube
 ## License
 
 [Apache License](./../LICENSE)
-<!-- END_TF_DOCS -->

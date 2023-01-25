@@ -6,10 +6,18 @@ footer-from: "docs/.footer.md"
 content: |
   {{ .Header }}
 
-  {{ include "docs/.deployment.md" }}  
-  
   {{ .Inputs }}
 
+  ### Example
+  
+  An example `my.local.tfvars` that will use a Google Cloud project **my-awesome-project**, create a two node GKE cluster named **wi-demo** in region **asia-south1** with Kubernetes version **1.24.** from **stable** release channel. The machine type of each cluster node will be **e2-standard-4**. The demo will be deployed in Kubernetes namespace **demo-apps**, will use **lingua-greeter** as the Kubernetes Service Account.
+
+  ```hcl
+  {{ include "docs/tfvars-example" }} 
+  ```
+
+  {{ include "docs/.deployment.md" }} 
+  
   {{ .Outputs }}
 
   {{ .Providers }}
