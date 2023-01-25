@@ -1,0 +1,23 @@
+gcloud container clusters update kameshs-demos \
+    --region=asia-south1-b \
+    --workload-pool=mkt-play.svc.id.goog
+
+gcloud container node-pools create kameshs-demos-workload-id-pool \
+    --cluster=kameshs-demos \
+	--region=asia-south1-b \
+    --workload-metadata=GKE_METADATA
+
+
+k create ns demos2
+
+kubectl create serviceaccount my-sa \
+    --namespace demos2
+
+gcloud iam service-accounts add-iam-policy-binding secops-3099@mkt-play.iam.gserviceaccount.com \
+    --role roles/iam.workloadIdentityUser \
+    --member "serviceAccount:mkt-play.svc.id.goog[demos2/my-sa]"
+
+
+kubectl annotate serviceaccount my-sa \
+    --namespace demos2 \
+    iam.gke.io/gcp-service-account=secops-3099@mkt-play.iam.gserviceaccount.com

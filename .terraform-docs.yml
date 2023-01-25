@@ -1,0 +1,23 @@
+formatter: "md table"
+
+header-from: "docs/.header.md"
+footer-from: "docs/.footer.md"
+
+content: |
+  {{ .Header }}
+
+  {{ .Inputs }}
+
+  {{ .Outputs }}
+
+  {{ .Providers }}
+
+  {{ .Requirements }}
+
+  {{ .Resources }}
+  
+  ## References
+  
+  {{ include "docs/.extra-resources.md" }}  
+
+  {{ .Footer }}
