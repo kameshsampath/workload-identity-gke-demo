@@ -45,3 +45,9 @@ variable "app_ksa" {
   description = "the kubernetes service account that will be used to run the lingua-greeter deployment"
   default     = "lingua-greeter"
 }
+
+variable "app_use_workload_identity" {
+  description = "Flag to enable/disable application(pod) from using Workload Identity"
+  default     = false
+  type        = bool
+}

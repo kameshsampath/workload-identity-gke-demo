@@ -3,5 +3,7 @@ kind: ServiceAccount
 metadata:
   name: lingua-greeter
   namespace: ${serviceAccountNamespace}
+%{ if googleServiceAccountEmail != "" ~}
   annotations:
     iam.gke.io/gcp-service-account: "${googleServiceAccountEmail}"
+%{ endif ~}

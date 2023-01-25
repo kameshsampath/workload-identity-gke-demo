@@ -29,7 +29,7 @@ output "kubeconfig_path" {
 }
 
 output "translator_service_account" {
-  value       = google_service_account.translator_sa.email
+  value       = length(google_service_account.translator_sa) == 0 ? "" : google_service_account.translator_sa[0].email
   description = "The Google Service Account 'translator'"
 }
 
@@ -37,7 +37,11 @@ output "ksa_patch" {
   value = templatefile("templates/sa.tfpl", {
     serviceAccountName : "${var.app_ksa}"
     serviceAccountNamespace : "${var.app_namespace}",
-    googleServiceAccountEmail : "${google_service_account.translator_sa.email}"
+    googleServiceAccountEmail : (
+      length(google_service_account.translator_sa) == 0
+      ? ""
+      : "${google_service_account.translator_sa[0].email}"
+    )
   })
   description = "The Kubernetes Service Account patch"
 }

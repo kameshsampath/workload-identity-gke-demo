@@ -28,7 +28,7 @@ apply:	validate	## Creates the terraform resources
 	terraform apply -var-file="$(TFVARS_FILE)"
 
 destroy:	##	Destroys terraform resources
-	terraform destroy
+	terraform destroy -var-file="$(TFVARS_FILE)"
 
 build:	## Build the application under app and push the image to repository $KO_DOCKER_REPO
 	cd "$(PWD)/app" && ko build --bare --platform=linux/amd64 --platform=linux/arm64 --image-label=org.opencontainers.image.source=https://github.com/kameshsampath/workload-identiy-gke-demo .
