@@ -4,7 +4,7 @@ resource "google_service_account" "translator_sa" {
   display_name = "Service Account that will be used to call Translate API"
 }
 
-resource "google_service_account_iam_binding" "admin-account-iam" {
+resource "google_service_account_iam_binding" "workload_identity_iam" {
   count              = var.app_use_workload_identity ? 1 : 0
   service_account_id = google_service_account.translator_sa[0].name
   role               = "roles/iam.workloadIdentityUser"

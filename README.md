@@ -9,6 +9,7 @@ A demo to show how to use [Workload Identity](https://cloud.google.com/kubernete
     - `Kubernetes Engine Admin` - to create GKE cluster
     - `Service Account User`    - to use other needed service accounts
     - `Compute Network Admin`   - to create the VPC networks
+  - Enable Cloud Translation API on the Google Cloud Project
 - [Google Cloud SDK](https://cloud.google.com/sdk)
 - [terraform](https://terraform.build)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
