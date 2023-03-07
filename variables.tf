@@ -51,3 +51,52 @@ variable "app_use_workload_identity" {
   default     = false
   type        = bool
 }
+
+variable "install_harness_delegate" {
+  description = "Flag to install Harness Delegate"
+  default     = false
+  type        = bool
+}
+
+variable "harness_account_id" {
+  description = "Harness Account Id to use while installing the delegate"
+  type        = string
+  sensitive   = true
+}
+
+variable "harness_delegate_token" {
+  description = "Harness Delegate token"
+  type        = string
+  sensitive   = true
+}
+
+variable "harness_delegate_name" {
+  description = "The Harness Delegate name"
+  type        = string
+  default     = "harness-delegate"
+}
+
+variable "harness_delegate_namespace" {
+  description = "The Harness Delegate Kubernetes namespace"
+  type        = string
+  default     = "harness-delegate-ng"
+}
+
+variable "harness_manager_endpoint" {
+  # https://developer.harness.io/tutorials/platform/install-delegate/
+  # use one from above
+  description = "The Harness SaaS manager endpoint to use"
+  type        = string
+}
+
+variable "harness_delegate_image" {
+  description = "The Harness delegate image to use"
+  type        = string
+  default     = "harness/delegate:23.02.78306"
+}
+
+variable "harness_delegate_replicas" {
+  description = "The Harness delegate kubernetes replica count"
+  default     = 1
+  type        = number
+}
