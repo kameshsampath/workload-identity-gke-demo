@@ -4,6 +4,10 @@ provider "helm" {
   }
 }
 
+provider "kubernetes" {
+  config_path = "${path.module}/.kube/config"
+}
+
 ## enable Workload Identity to Harness Delegate SA
 
 resource "google_service_account" "harness_delegate_sa" {
@@ -18,7 +22,8 @@ resource "google_service_account_iam_binding" "harness_delegate_workload_identit
   role               = "roles/iam.workloadIdentityUser"
 
   members = [
-    "serviceAccount:${var.project_id}.svc.id.goog[${var.app_namespace}/${var.harness_delegate_name}-delegate]",
+    "serviceAccount:${var.project_id}.svc.id.goog[${var.harness_delegate_namespace}/${var.harness_delegate_name}-delegate]",
+    "serviceAccount:${var.project_id}.svc.id.goog[${var.builder_namespace}/${var.builder_ksa}]",
   ]
 }
 
@@ -79,9 +84,28 @@ resource "helm_release" "harness_delegate" {
     value = var.harness_delegate_replicas
   }
 
-  # Enables Workload Identity
+  # Enables Workload Identity for the Delegate SA
   set {
     name  = "serviceAccount.annotations.iam\\.gke\\.io\\/gcp-service-account"
     value = google_service_account.harness_delegate_sa[0].email
+  }
+}
+
+# The service account that needs to be configured with Harnes pipeline infra
+resource "kubernetes_manifest" "builder_ksa" {
+  depends_on = [
+    google_container_cluster.primary
+  ]
+  count = var.install_harness_delegate ? 1 : 0
+  manifest = {
+    "apiVersion" = "v1"
+    "kind"       = "ServiceAccount"
+    "metadata" = {
+      "name"      = "${var.builder_ksa}"
+      "namespace" = "${var.builder_namespace}"
+      "annotations" = {
+        "iam.gke.io/gcp-service-account" = "${google_service_account.harness_delegate_sa[0].email}"
+      }
+    }
   }
 }
