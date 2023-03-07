@@ -1,6 +1,8 @@
 # Using Workload Identity
 
-A demo to show how to use [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity) to call Google Cloud API. In this demo we will call the [Translate API](https://cloud.google.com/translate) from a GKE application(pod) using Workload Identity.
+A demo to show how to use [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity) with Harness Pipelines.
+
+In this demo we will build Harness CI pipeline that will use GKE as its build infrastructure. As part of the build infrastructure on GKE we will deploy a Harness Delegate to run our CI pipelines on our GKE.
 
 ## Pre-requisites
 
@@ -22,7 +24,7 @@ A demo to show how to use [Workload Identity](https://cloud.google.com/kubernete
 Clone the sources,
 
 ```shell
-git clone https://github.com/kameshsampath/workload-identiy-gke-demo.git && cd "$(basename "$_" .git)"
+git clone https://github.com/harness-apps/workload-identity-gke-demo.git && cd "$(basename "$_" .git)"
 export DEMO_HOME="$PWD"
 ```
 
@@ -70,29 +72,25 @@ Check the [Inputs](#inputs) section for all possible variables that are configur
 An example `my.local.tfvars` that will use a Google Cloud project **my-awesome-project**, create a two node GKE cluster named **wi-demo** in region **asia-south1** with Kubernetes version **1.24.** from **stable** release channel. The machine type of each cluster node will be **e2-standard-4**. The demo will be deployed in Kubernetes namespace **demo-apps**, will use **lingua-greeter** as the Kubernetes Service Account.
 
 ```hcl
-app_ksa            = "lingua-greeter"
-app_namespace      = "demo-apps"
-cluster_name       = "wi-demo"
-configure_app_workload_identity = false
-gke_num_nodes      = 2
-kubernetes_version = "1.24."
-machine_type       = "e2-standard-4"
-project_id         = "my-awesome-project"
-region             = "asia-south1"
-release_channel    = "stable"
+project_id                 = "pratyakshika"
+region                     = "asia-south1"
+cluster_name               = "wi-demos"
+kubernetes_version         = "1.24."
+install_harness_delegate   = true
+harness_account_id         = "REPLACE WITH YOUR HARNESS ACCOUNT ID"
+harness_delegate_token     = "REPLACE WITH YOUR HARNESS DELEGATE TOKEN"
+harness_delegate_name      = "wi-demos-delegate"
+harness_delegate_namespace = "harness-delegate-ng"
+harness_manager_endpoint   = "https://app.harness.io/gratis"
 ```
 
 > **NOTE**: For rest of the section we assume that your tfvars file is called `my.local.tfvars`
 >
+> - `harness_manager_endpoint` value is can be found here <https://developer.harness.io/tutorials/platform/install-delegate/>, to right endpoint check for your **Harness Cluster Hosting Account** from the Harness Account Overview page.
+> In the example above my **Harness Cluster Hosting Account** is **prod-2** and its endpoint is <https://app.harness.io/gratis>
+> 
 
-## Application Overview
-
-As part of the demo, let us deploy a Kubernetes application called `lingua-greeter`. The application exposes a REST API `/:lang` , that allows you to translate a text `Hello World!` into the language `:lang` using Google Translate client.
-
-> **NOTE**: The `:lang` is the BCP 47 language code, <https://en.wikipedia.org/wiki/IETF_language_tag>.
->
-
-### Create Environment
+## Create Environment
 
 We will use terraform to create a GKE cluster with `WorkloadIdentity` enabled for its nodes,
 
@@ -104,111 +102,85 @@ The terraform apply will create the following Google Cloud resources,
 
 - A Kubernetes cluster on GKE
 - A Google Cloud VPC that will be used with GKE
-  
-### Deploy Application
 
-Create the namespace `demo-apps` to deploy the `lingua-greeter` application,
-
-```shell
-kubectl create ns demo-apps
-```
-
-Run the following command to deploy the application,
-
-```shell
-kubectl apply -k $DEMO_HOME/app/config
-```
-
-Wait for application to be ready,
-
-```shell
-kubectl rollout status -n demo-apps deployment/lingua-greeter --timeout=60s
-```
-
-Get the application service LoadBalancer IP,
-
-```shell
-kubectl get svc -n demo-apps lingua-greeter
-```
-
-> **NOTE**: If the `EXTERNAL-IP` is `<pending>` then wait for the IP to be assigned. It will take few minutes for the `EXTERNAL-IP` to be assigned.
-
-### Call Service
-
-```shell
-export SERVICE_IP=$(kubectl get svc -n demo-apps lingua-greeter -ojsonpath="{.status.loadBalancer.ingress[*].ip}")
-```
-
-Call the service to return the translation of `Hello World!` in [Tamil(ta)](https://en.wikipedia.org/wiki/Tamil_language),
-
-```shell
-curl "http://$SERVICE_IP/ta"
-```
-
-The service should fail with a message,
-
-```text
-{"message":"Internal Server Error"}
-```
-
-When you check the logs of the `lingua-greeter` pod, you should see a message like,
-
-```text
-time="2023-01-25T10:26:50Z" level=error msg="googleapi: Error 401: Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.\nMore details:\nReason: authError, Message: Invalid Credentials\n"
-```
-
-As it describes you don't have authentication credentials to call the API. All Google Cloud API requires `GOOGLE_APPLICATION_CREDENTIALS` to allow client to authenticate itself before calling the API. If you check the [deployment manifest](./../app/config/deployment.yaml) we dont have one configured.
-
-### Configure Application to use Workload Identity
-
-- [x] Create a Service Account(SA) that has permissions to call Google Translation API, in our demo we call that SA as `translator`
-- [x] Add `translator` SA with role `roles/cloudtranslate.user`
-- [x] Add an [IAM binding policy](https://cloud.google.com/iam/docs/reference/rest/v1/Policy) to `translator` SA, with the role `roles/iam.workloadIdentityUser` and a member `"serviceAccount:$GOOGLE_CLOUD_PROJECT.svc.id.goog[demo-apps/lingua-greeter]"` (default workload identity SA)
-
-Edit your `my.local.tfvars` file and update the `app_use_workload_identity` to be `true`.Save the `my.local.tfvars` and run the following command to create the SA, role and IAM policy binding resources,
-
-```shell
-make apply
-```
-
-The command ran earlier should also generate an updated `lingua-greeter` Kubernetes Service Account manifest `$DEMO_HOME/k8s/sa.yaml`, that is annotated to impersonate the `translator` Google SA,
+## Create Pipeline
 
 ```yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: lingua-greeter
-  namespace: demo-apps
-  annotations:
-    iam.gke.io/gcp-service-account: "translator@$GOOGLE_CLOUD_PROJECT.iam.gserviceaccount.com"
+pipeline:
+  name: REPLACE ME
+  identifier: REPLACE ME
+  projectIdentifier: REPLACE ME
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.Github
+        repoName: harness-apps/workload-identity-gke-demo
+        build: <+input>
+  stages:
+    - stage:
+        name: Build
+        identifier: Build
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: widemos
+              namespace: default
+              serviceAccountName: harness-builder
+              automountServiceAccountToken: true
+              nodeSelector: {}
+              os: Linux
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Download Binaries
+                  identifier: Download_Binaries
+                  spec:
+                    connectorRef: account.DockerHub
+                    image: alpine
+                    shell: Sh
+                    command: |-
+                      apk add -U curl 
+                      curl -sSL https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v2.1.6/docker-credential-gcr_linux_amd64-2.1.6.tar.gz | tar -zx
+                      curl -sSL https://github.com/ko-build/ko/releases/download/v0.12.0/ko_0.12.0_Linux_x86_64.tar.gz | tar -zx
+
+                      mkdir -p /tools
+                      mv docker-credential-gcr  /tools
+                      mv ko /tools
+                      export PATH="$PATH:/tools"
+
+                      docker-credential-gcr configure-docker --registries="asia-south1-docker.pkg.dev"
+                    imagePullPolicy: IfNotPresent
+                  description: Download ko and docker-credential-gcr binaries
+              - step:
+                  type: Run
+                  name: ko build and push
+                  identifier: ko_build_and_push
+                  spec:
+                    connectorRef: account.DockerHub
+                    image: golang:1.19-alpine3.17
+                    shell: Sh
+                    command: |-
+                      export PATH=$PATH:/tools
+                      cd /harness/app
+                      ko build --bare --tag latest .
+                    envVariables:
+                      KO_DOCKER_REPO: asia-south1-docker.pkg.dev/pratyakshika/demos/lingua-greeter
+                    imagePullPolicy: IfNotPresent
+                    resources:
+                      limits:
+                        memory: 4G
+                        cpu: 2000m
+                  description: build and push the application using ko
+          sharedPaths:
+            - /tools
+            - /root/.docker
 ```
-
-Run the following command to update the Kubernetes SA `lingua-greeter`,
-
-```shell
-kubectl apply -n demo-apps -f "$DEMO_HOME/k8s/sa.yaml"
-```
-
-[Call the service](#call-service) again, the service should succeed with a response,
-
-```json
-{"text":"Hello World!","translation":"வணக்கம் உலகம்!","translationLanguage":"ta"}
-```
-
-For more information check out [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity).
-
-## Outputs
-
-| Name | Description |
-|------|-------------|
-| <a name="output_ksa_patch"></a> [ksa\_patch](#output\_ksa\_patch) | The Kubernetes Service Account patch |
-| <a name="output_kubeconfig_path"></a> [kubeconfig\_path](#output\_kubeconfig\_path) | Kubeconfig file |
-| <a name="output_kubernetes_cluster_host"></a> [kubernetes\_cluster\_host](#output\_kubernetes\_cluster\_host) | GKE Cluster Host |
-| <a name="output_kubernetes_cluster_name"></a> [kubernetes\_cluster\_name](#output\_kubernetes\_cluster\_name) | GKE Cluster Name |
-| <a name="output_project_id"></a> [project\_id](#output\_project\_id) | GCloud Project ID |
-| <a name="output_region"></a> [region](#output\_region) | GCloud Region |
-| <a name="output_translator_service_account"></a> [translator\_service\_account](#output\_translator\_service\_account) | The Google Service Account 'translator' |
-| <a name="output_zone"></a> [zone](#output\_zone) | GCloud Zone |
 
 ## License
 

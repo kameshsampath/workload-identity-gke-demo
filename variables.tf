@@ -54,7 +54,7 @@ variable "app_use_workload_identity" {
 
 variable "install_harness_delegate" {
   description = "Flag to install Harness Delegate"
-  default     = false
+  default     = true
   type        = bool
 }
 
@@ -99,4 +99,14 @@ variable "harness_delegate_replicas" {
   description = "The Harness delegate kubernetes replica count"
   default     = 1
   type        = number
+}
+
+variable "builder_namespace" {
+  description = "the namespace where all Harness builder pods will be run"
+  default     = "default"
+}
+
+variable "builder_ksa" {
+  description = "the kubernetes service account that will be used to run the Harness delegate builder pods, which is enabled with Workload Identity"
+  default     = "harness-builder"
 }
