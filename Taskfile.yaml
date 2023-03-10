@@ -1,0 +1,70 @@
+# https://taskfile.dev
+
+version: "3"
+
+vars:
+  TFVARS_FILE: .local.tfvars
+
+dotenv:
+  - .env
+
+tasks:
+  default:
+    cmds:
+      - task: plan
+    silent: true
+  
+  clean:
+    desc: Clean all terraform artifacts/assets
+    silent: true
+    cmds:
+      - rm -rf .terraform .terraform.lock.hcl
+  
+  format:
+    desc: Format terraform files
+    silent: true
+    cmds:
+      - terraform fmt --recursive {{.ROOT_DIR}}
+  
+  init:
+    desc: Init terraform working directory
+    silent: true
+    cmds:
+      - mkdir -p {{.ROOT_DIR}}/.kube
+      - terraform init
+
+  validate:
+    silent: true
+    deps:
+      - format
+    desc: Validate the terraform resources
+    cmds:
+      - terraform validate
+  
+  create_cluster:
+    silent: true
+    deps:
+      - validate
+    desc: Create the GKE cluster
+    cmds:
+     - terraform apply -var app_use_workload_identity=false -var-file={{.TFVARS_FILE}}
+  
+  deploy_app:
+    silent: true
+    deps:
+      - validate
+    desc: Deploy the Harness Delegate on to GKE
+    cmds:
+     - terraform apply -var-file={{.TFVARS_FILE}} -var app_use_workload_identity=true
+  
+  destroy:
+    silent: true
+    desc: Destroys terraform resources
+    cmds:
+      - terraform destroy -var-file={{.TFVARS_FILE}}
+  
+  readme:
+    desc: Build the README.md
+    silent: true
+    cmds:
+     - terraform-docs {{.ROOT_DIR}} > {{.ROOT_DIR}}/README.md
