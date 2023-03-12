@@ -115,9 +115,17 @@ As part of the demo, let us deploy a Kubernetes application called `lingua-greet
 > **NOTE**: The `:lang` is the BCP 47 language code, <https://en.wikipedia.org/wiki/IETF_language_tag>.
 >
 
+## Tasks
+
+The deployment is done using [task](https://taskfile.dev). You can list all available tasks using the command,
+
+```shell
+task --list
+```
+
 ## Create Environment
 
-We will use terraform to create a GKE cluster with `WorkloadIdentity` enabled for its nodes,
+We will use terraform to create all the Google Cloud resources like GKE, Service Account, Kubernetes manifests etc.,
 
 ```shell
 task init
@@ -125,23 +133,21 @@ task init
 
 ### Create GKE cluster
 
-The terraform apply will creates a Kubernetes(GKE) Cluster,
+The terraform apply will create the following Google Cloud resources,
+
+- A Kubernetes cluster on GKE with **Workload Identity** enabled
+- A Google Cloud VPC that will be used with GKE
 
 ```shell
 task create_cluster
 ```
-
-The terraform apply will create the following Google Cloud resources,
-
-- A Kubernetes cluster on GKE
-- A Google Cloud VPC that will be used with GKE
   
 ### Deploy Application
 
 To see **Workload Identity** in action we will deploy the application in two parts,
 
-- Without application(workload) enabled for **Workload Identity**
-- With application(workload) enabled for **Workload Identity**
+- Application(workload) **not** enabled for **Workload Identity**
+- Application(workload) **enabled** for **Workload Identity**
 
 Create the namespace `demo-apps` to deploy the `lingua-greeter` application,
 
@@ -167,12 +173,15 @@ Get the application service LoadBalancer IP,
 kubectl get svc -n demo-apps lingua-greeter
 ```
 
-> **NOTE**: If the `EXTERNAL-IP` is `<pending>` then wait for the IP to be assigned. It will take few minutes for the `EXTERNAL-IP` to be assigned.
-> You can use the following command to wait until `External-IP` is assigned,
+> **TIP**: You can also deploy the application using the command `task deploy_app`
 >
->```shell
-> while [ -z $(kubectl get svc -n demo-apps lingua-greeter -ojsonpath="{.status.loadBalancer.ingress[*].ip}") ]; do sleep .3; done;
->```
+
+If the `EXTERNAL-IP` is `<pending>` then wait for the IP to be assigned. It will take few minutes for the `EXTERNAL-IP` to be assigned.
+You can use the following command to wait until `External-IP` is assigned,
+
+```shell
+  while [ -z $(kubectl get svc -n demo-apps lingua-greeter -ojsonpath="{.status.loadBalancer.ingress[*].ip}") ]; do sleep .3; done;
+```
 
 ### Call Service
 
@@ -206,10 +215,10 @@ As it describes you don't have authentication credentials to call the API. All G
 - [x] Add `translator` SA with role `roles/cloudtranslate.user`
 - [x] Add an [IAM binding policy](https://cloud.google.com/iam/docs/reference/rest/v1/Policy) to `translator` SA, with the role `roles/iam.workloadIdentityUser` and a member `"serviceAccount:$GOOGLE_CLOUD_PROJECT.svc.id.goog[demo-apps/lingua-greeter]"` (default workload identity SA)
 
-Edit your `my.local.tfvars` file and update the `app_use_workload_identity` to be `true`.Save the `my.local.tfvars` and run the following command to create the SA, role and IAM policy binding resources,
+Edit your `.local.tfvars` file and update the `app_use_workload_identity` to be `true`.Save the `.local.tfvars` and run the following command to create the SA, role and IAM policy binding resources,
 
 ```shell
-task deploy_app
+task use_workload_identity
 ```
 
 The command ran earlier should also generate an updated `lingua-greeter` Kubernetes Service Account manifest `$DEMO_HOME/k8s/sa.yaml`, that is annotated to impersonate the `translator` Google SA,

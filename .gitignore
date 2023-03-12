@@ -33,3 +33,4 @@ override.tf.json
 
 k8s/**
 !k8s/.gitkeep
+.task

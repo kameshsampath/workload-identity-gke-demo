@@ -4,14 +4,20 @@ version: "3"
 
 vars:
   TFVARS_FILE: .local.tfvars
+  # The default namespace where application gets deployed
+  APP_NAMESPACE: demo-apps
+  # https://en.wikipedia.org/wiki/IETF_language_tag
+  LANG: ta
 
 dotenv:
   - .env
 
 tasks:
   default:
+    desc: Creates GKE cluster and Deploys the lingua-greeter application
     cmds:
-      - task: plan
+      - task: create_cluster
+      - task: deploy_app
     silent: true
   
   clean:
@@ -24,14 +30,14 @@ tasks:
     desc: Format terraform files
     silent: true
     cmds:
-      - terraform fmt --recursive {{.ROOT_DIR}}
+      - terraform fmt --recursive {{.ROOT_DIR}} {{.CLI_ARGS}}
   
   init:
     desc: Init terraform working directory
     silent: true
     cmds:
       - mkdir -p {{.ROOT_DIR}}/.kube
-      - terraform init
+      - terraform init {{.CLI_ARGS}}
 
   validate:
     silent: true
@@ -39,7 +45,7 @@ tasks:
       - format
     desc: Validate the terraform resources
     cmds:
-      - terraform validate
+      - terraform validate {{.CLI_ARGS}}
   
   create_cluster:
     silent: true
@@ -47,21 +53,84 @@ tasks:
       - validate
     desc: Create the GKE cluster
     cmds:
-     - terraform apply -var app_use_workload_identity=false -var-file={{.TFVARS_FILE}}
+     - terraform apply -var app_use_workload_identity=false -var-file={{.TFVARS_FILE}} {{.CLI_ARGS}}
   
   deploy_app:
     silent: true
+    aliases:
+      - "deploy"
+    desc: Deploy the application without workload identity 
+    sources:
+      - app/config/*.yaml
+    status:
+     - | 
+      kubectl rollout status -n demo-apps deployment/lingua-greeter --timeout=60s | grep -q 'deployment "lingua-greeter" successfully rolled out'
+    cmds:
+     - kubectl get ns --no-headers | grep -q  {{.APP_NAMESPACE}} || kubectl create ns {{.APP_NAMESPACE}}
+     - kubectl apply -n {{.APP_NAMESPACE}} -k $DEMO_HOME/app/config
+     - kubectl rollout status -n {{.APP_NAMESPACE}} deployment/lingua-greeter --timeout=60s
+     - while [ -z $(kubectl get svc -n {{.APP_NAMESPACE}} lingua-greeter -ojsonpath="{.status.loadBalancer.ingress[*].ip}") ]; do sleep .3; done;
+  
+  use_workload_identity:
+    silent: true
     deps:
       - validate
-    desc: Deploy the Harness Delegate on to GKE
+      - deploy_app
+    desc: Make application use Workload Identity
+    sources:
+      - rbac.tf
+    generates:
+      - k8s/sa.yaml
+    status:
+      - |
+        grep -q 'iam.gke.io/gcp-service-account: "translator@{{.GOOGLE_PROJECT_ID}}.iam.gserviceaccount.com"' k8s/sa.yaml
     cmds:
-     - terraform apply -var-file={{.TFVARS_FILE}} -var app_use_workload_identity=true
+     - terraform apply -var-file={{.TFVARS_FILE}} -var app_use_workload_identity=true {{.CLI_ARGS}}
+     - kubectl apply -n {{.APP_NAMESPACE}} -f k8s/sa.yaml
+    vars:
+      GOOGLE_PROJECT_ID:
+        sh: terraform output -raw project_id
   
+  show_service_ip:
+    desc: Display the lingua-greeter service's LoadBalancer IP 
+    silent: true
+    deps:
+      - deploy_app
+    cmds:
+      - |
+        echo "Service IP: {{.SERVICE_IP}}"
+        echo "Application URL: http://{{.SERVICE_IP}}"
+    vars:
+      SERVICE_IP:
+        sh: kubectl get svc -n {{.APP_NAMESPACE}} lingua-greeter -ojsonpath="{.status.loadBalancer.ingress[*].ip}"
+
+  call_service:
+    desc: Calls the lingua-greeter service
+    silent: true
+    cmds:
+      - curl -s "http://{{.SERVICE_IP}}/{{.LANG}}"
+    vars:
+      SERVICE_IP:
+        sh: kubectl get svc -n demo-apps lingua-greeter -ojsonpath="{.status.loadBalancer.ingress[*].ip}"
+
+  app_logs:
+    desc: Shows the application logs
+    silent: true
+    cmds:
+      - kubectl logs  -n {{.APP_NAMESPACE}} -lapp=lingua-greeter
+
+  restart_app:
+    desc: Restarts the kubernetes deployment
+    silent: true
+    cmds:
+      - kubectl rollout restart -n {{.APP_NAMESPACE}} deployment/lingua-greeter
+      - kubectl rollout status -n {{.APP_NAMESPACE}} deployment/lingua-greeter --timeout=60s
+
   destroy:
     silent: true
     desc: Destroys terraform resources
     cmds:
-      - terraform destroy -var-file={{.TFVARS_FILE}}
+      - terraform destroy -var-file={{.TFVARS_FILE}} {{.CLI_ARGS}}
   
   readme:
     desc: Build the README.md
